@@ -1,0 +1,25 @@
+{
+    "name": "backend-ecommerce",
+    "version": "1.0.0",
+    "description": "API de E-commerce con Node.js y Express",
+    "main": "src/app.js",
+    "type": "module",
+    "scripts": {
+        "start": "node src/app.js",
+        "dev": "nodemon src/app.js"
+    },
+    "keywords": [
+        "ecommerce",
+        "api",
+        "express",
+        "nodejs"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "express": "^4.18.2"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.1"
+    }
+}
