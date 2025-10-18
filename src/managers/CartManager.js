@@ -61,6 +61,11 @@ class CartManager {
     async addProductToCart(cartId, productId) {
         await this.init();
 
+        // Validar que productId sea un número válido
+        if (typeof productId !== 'number' || productId <= 0 || !Number.isInteger(productId)) {
+            throw new Error('El ID del producto debe ser un número entero positivo');
+        }
+
         const cartIndex = this.carts.findIndex(c => c.id === cartId);
         if (cartIndex === -1) {
             throw new Error(`Carrito con id ${cartId} no encontrado`);

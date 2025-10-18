@@ -120,7 +120,7 @@ POST http://localhost:8080/api/carts/1/product/1
 
 ## Autor
 
-[Tu nombre]
+Nelson Sanchez
 
 ## Licencia
 
