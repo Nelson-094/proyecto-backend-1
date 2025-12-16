@@ -1,201 +1,151 @@
-import fs from 'fs';
+import Product from '../models/product.model.js';
 
 class ProductManager {
-    constructor(path) {
-        this.path = path;
-        this.products = [];
-        this.init();
-    }
-
-    async init() {
+    /**
+     * Obtener productos con paginación, filtrado y ordenamiento
+     * @param {Object} options - Opciones de consulta
+     * @param {Number} options.limit - Límite de productos por página (default: 10)
+     * @param {Number} options.page - Número de página (default: 1)
+     * @param {String} options.sort - Ordenamiento por precio: 'asc' o 'desc'
+     * @param {String} options.query - Filtro de búsqueda (ej: 'category:electronics' o 'status:true')
+     */
+    async getProducts(options = {}) {
         try {
-            if (fs.existsSync(this.path)) {
-                const data = await fs.promises.readFile(this.path, 'utf-8');
-                this.products = JSON.parse(data);
-            } else {
-                await this.saveToFile();
+            const limit = parseInt(options.limit) || 10;
+            const page = parseInt(options.page) || 1;
+            const sort = options.sort;
+            const query = options.query;
+
+            // Construir filtro
+            let filter = {};
+            if (query) {
+                // Parsear query: "category:electronics" o "status:true"
+                const [field, value] = query.split(':');
+                if (field && value) {
+                    if (field === 'status') {
+                        filter[field] = value === 'true';
+                    } else if (field === 'category') {
+                        filter[field] = value;
+                    }
+                }
             }
-        } catch (error) {
-            console.error('Error al inicializar ProductManager:', error);
-            this.products = [];
-        }
-    }
 
-    async saveToFile() {
-        try {
-            await fs.promises.writeFile(
-                this.path,
-                JSON.stringify(this.products, null, 2),
-                'utf-8'
-            );
+            // Construir opciones de ordenamiento
+            let sortOptions = {};
+            if (sort === 'asc') {
+                sortOptions.price = 1;
+            } else if (sort === 'desc') {
+                sortOptions.price = -1;
+            }
+
+            // Calcular skip
+            const skip = (page - 1) * limit;
+
+            // Ejecutar consulta con paginación
+            const products = await Product.find(filter)
+                .sort(sortOptions)
+                .limit(limit)
+                .skip(skip)
+                .lean();
+
+            // Contar total de documentos
+            const totalDocs = await Product.countDocuments(filter);
+            const totalPages = Math.ceil(totalDocs / limit);
+
+            // Construir respuesta con metadata de paginación
+            const hasPrevPage = page > 1;
+            const hasNextPage = page < totalPages;
+
+            // Construir links de navegación
+            const baseUrl = '/api/products';
+            const buildLink = (pageNum) => {
+                if (!pageNum) return null;
+                let link = `${baseUrl}?page=${pageNum}&limit=${limit}`;
+                if (sort) link += `&sort=${sort}`;
+                if (query) link += `&query=${query}`;
+                return link;
+            };
+
+            return {
+                status: 'success',
+                payload: products,
+                totalPages,
+                prevPage: hasPrevPage ? page - 1 : null,
+                nextPage: hasNextPage ? page + 1 : null,
+                page,
+                hasPrevPage,
+                hasNextPage,
+                prevLink: buildLink(hasPrevPage ? page - 1 : null),
+                nextLink: buildLink(hasNextPage ? page + 1 : null)
+            };
         } catch (error) {
-            console.error('Error al guardar productos:', error);
+            console.error('Error al obtener productos:', error);
             throw error;
         }
     }
 
-    async getProducts() {
-        await this.init();
-        return this.products;
-    }
-
     async getProductById(id) {
-        await this.init();
-        const product = this.products.find(p => p.id === id);
-        return product || null;
+        try {
+            const product = await Product.findById(id);
+            return product;
+        } catch (error) {
+            console.error('Error al obtener producto:', error);
+            throw error;
+        }
     }
 
     async addProduct(productData) {
-        await this.init();
-
-        // Validar campos obligatorios
-        const requiredFields = ['title', 'description', 'code', 'price', 'stock', 'category'];
-        for (const field of requiredFields) {
-            if (!productData[field] && productData[field] !== 0) {
-                throw new Error(`El campo ${field} es obligatorio`);
+        try {
+            const product = new Product(productData);
+            await product.save();
+            return product;
+        } catch (error) {
+            if (error.code === 11000) {
+                throw new Error(`El código ${productData.code} ya existe`);
             }
+            console.error('Error al agregar producto:', error);
+            throw error;
         }
-
-        // Validar tipos de datos
-        if (typeof productData.title !== 'string' || productData.title.trim() === '') {
-            throw new Error('El título debe ser un texto no vacío');
-        }
-        if (typeof productData.description !== 'string' || productData.description.trim() === '') {
-            throw new Error('La descripción debe ser un texto no vacío');
-        }
-        if (typeof productData.code !== 'string' || productData.code.trim() === '') {
-            throw new Error('El código debe ser un texto no vacío');
-        }
-        if (typeof productData.category !== 'string' || productData.category.trim() === '') {
-            throw new Error('La categoría debe ser un texto no vacío');
-        }
-
-        // Validar price
-        if (typeof productData.price !== 'number' || productData.price <= 0) {
-            throw new Error('El precio debe ser un número mayor a 0');
-        }
-
-        // Validar stock
-        if (typeof productData.stock !== 'number' || productData.stock < 0 || !Number.isInteger(productData.stock)) {
-            throw new Error('El stock debe ser un número entero mayor o igual a 0');
-        }
-
-        // Validar thumbnails si existe
-        if (productData.thumbnails && !Array.isArray(productData.thumbnails)) {
-            throw new Error('Las thumbnails deben ser un array');
-        }
-
-        // Validar que el código no esté repetido
-        const codeExists = this.products.some(p => p.code === productData.code);
-        if (codeExists) {
-            throw new Error(`El código ${productData.code} ya existe`);
-        }
-
-        // Generar ID único
-        const newId = this.products.length > 0
-            ? Math.max(...this.products.map(p => p.id)) + 1
-            : 1;
-
-        const newProduct = {
-            id: newId,
-            title: productData.title.trim(),
-            description: productData.description.trim(),
-            code: productData.code.trim().toUpperCase(),
-            price: productData.price,
-            status: productData.status !== undefined ? productData.status : true,
-            stock: productData.stock,
-            category: productData.category.trim(),
-            thumbnails: productData.thumbnails || []
-        };
-
-        this.products.push(newProduct);
-        await this.saveToFile();
-        return newProduct;
     }
 
     async updateProduct(id, updateData) {
-        await this.init();
+        try {
+            // No permitir actualizar el _id
+            delete updateData._id;
 
-        const index = this.products.findIndex(p => p.id === id);
-        if (index === -1) {
-            throw new Error(`Producto con id ${id} no encontrado`);
-        }
+            const product = await Product.findByIdAndUpdate(
+                id,
+                updateData,
+                { new: true, runValidators: true }
+            );
 
-        // No permitir actualizar el id
-        if (updateData.id) {
-            delete updateData.id;
-        }
-
-        // Validar tipos si se proporcionan
-        if (updateData.title !== undefined) {
-            if (typeof updateData.title !== 'string' || updateData.title.trim() === '') {
-                throw new Error('El título debe ser un texto no vacío');
+            if (!product) {
+                throw new Error(`Producto con id ${id} no encontrado`);
             }
-            updateData.title = updateData.title.trim();
-        }
 
-        if (updateData.description !== undefined) {
-            if (typeof updateData.description !== 'string' || updateData.description.trim() === '') {
-                throw new Error('La descripción debe ser un texto no vacío');
+            return product;
+        } catch (error) {
+            if (error.code === 11000) {
+                throw new Error(`El código ya existe`);
             }
-            updateData.description = updateData.description.trim();
+            console.error('Error al actualizar producto:', error);
+            throw error;
         }
-
-        if (updateData.category !== undefined) {
-            if (typeof updateData.category !== 'string' || updateData.category.trim() === '') {
-                throw new Error('La categoría debe ser un texto no vacío');
-            }
-            updateData.category = updateData.category.trim();
-        }
-
-        if (updateData.price !== undefined) {
-            if (typeof updateData.price !== 'number' || updateData.price <= 0) {
-                throw new Error('El precio debe ser un número mayor a 0');
-            }
-        }
-
-        if (updateData.stock !== undefined) {
-            if (typeof updateData.stock !== 'number' || updateData.stock < 0 || !Number.isInteger(updateData.stock)) {
-                throw new Error('El stock debe ser un número entero mayor o igual a 0');
-            }
-        }
-
-        if (updateData.thumbnails !== undefined && !Array.isArray(updateData.thumbnails)) {
-            throw new Error('Las thumbnails deben ser un array');
-        }
-
-        // Si se intenta actualizar el código, validar que no esté repetido
-        if (updateData.code && updateData.code !== this.products[index].code) {
-            if (typeof updateData.code !== 'string' || updateData.code.trim() === '') {
-                throw new Error('El código debe ser un texto no vacío');
-            }
-            updateData.code = updateData.code.trim().toUpperCase();
-            const codeExists = this.products.some(p => p.code === updateData.code);
-            if (codeExists) {
-                throw new Error(`El código ${updateData.code} ya existe`);
-            }
-        }
-
-        this.products[index] = {
-            ...this.products[index],
-            ...updateData
-        };
-
-        await this.saveToFile();
-        return this.products[index];
     }
 
     async deleteProduct(id) {
-        await this.init();
+        try {
+            const product = await Product.findByIdAndDelete(id);
 
-        const index = this.products.findIndex(p => p.id === id);
-        if (index === -1) {
-            throw new Error(`Producto con id ${id} no encontrado`);
+            if (!product) {
+                throw new Error(`Producto con id ${id} no encontrado`);
+            }
+
+            return product;
+        } catch (error) {
+            console.error('Error al eliminar producto:', error);
+            throw error;
         }
-
-        const deletedProduct = this.products.splice(index, 1);
-        await this.saveToFile();
-        return deletedProduct[0];
     }
 }
 
