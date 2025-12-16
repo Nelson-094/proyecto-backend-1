@@ -1,0 +1,43 @@
+<h1>Productos en Tiempo Real</h1>
+
+{{#if error}}
+<div class="error">{{error}}</div>
+{{/if}}
+
+<div id="products-container">
+    {{#if products.length}}
+    <table id="products-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Título</th>
+                <th>Descripción</th>
+                <th>Código</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Categoría</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody id="products-body">
+            {{#each products}}
+            <tr>
+                <td>{{this.id}}</td>
+                <td>{{this.title}}</td>
+                <td>{{this.description}}</td>
+                <td>{{this.code}}</td>
+                <td>${{this.price}}</td>
+                <td>{{this.stock}}</td>
+                <td>{{this.category}}</td>
+                <td>{{#if this.status}}Activo{{else}}Inactivo{{/if}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+    {{else}}
+    <div class="empty">No hay productos disponibles</div>
+    {{/if}}
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/realTimeProducts.js"></script>

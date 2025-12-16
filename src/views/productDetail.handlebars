@@ -1,0 +1,52 @@
+<h1>Detalle del Producto</h1>
+
+{{#if error}}
+<div class="error">{{error}}</div>
+{{else}}
+<div style="max-width: 800px; margin: 0 auto;">
+    <div style="background: #f8f9ff; padding: 30px; border-radius: 10px;">
+        <h2>{{product.title}}</h2>
+
+        <div style="margin: 20px 0;">
+            <p><strong>Código:</strong> {{product.code}}</p>
+            <p><strong>Categoría:</strong> {{product.category}}</p>
+            <p><strong>Precio:</strong> <span style="font-size: 1.5em; color: #667eea;">${{product.price}}</span></p>
+            <p><strong>Stock disponible:</strong> {{product.stock}} unidades</p>
+            <p><strong>Estado:</strong> {{#if product.status}}Disponible{{else}}No disponible{{/if}}</p>
+        </div>
+
+        <div style="margin: 20px 0; padding: 20px; background: white; border-radius: 8px;">
+            <h3>Descripción</h3>
+            <p>{{product.description}}</p>
+        </div>
+
+        {{#if product.thumbnails.length}}
+        <div style="margin: 20px 0;">
+            <h3>Imágenes</h3>
+            {{#each product.thumbnails}}
+            <img src="{{this}}" alt="Imagen del producto" style="max-width: 200px; margin: 10px; border-radius: 8px;">
+            {{/each}}
+        </div>
+        {{/if}}
+
+        <div style="margin-top: 30px; text-align: center;">
+            <button onclick="addToCart('{{product._id}}')"
+                style="background: #667eea; color: white; border: none; padding: 15px 40px; border-radius: 8px; font-size: 1.1em; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                🛒 Agregar al Carrito
+            </button>
+
+            <a href="/products"
+                style="display: inline-block; margin-left: 20px; padding: 15px 40px; background: #f0f0f0; color: #333; text-decoration: none; border-radius: 8px;">
+                ← Volver a productos
+            </a>
+        </div>
+    </div>
+</div>
+{{/if}}
+
+<script>
+    function addToCart(productId) {
+        alert('Producto agregado al carrito. ID: ' + productId);
+        // En una implementación real, harías un POST a /api/carts/:cid/products/:pid
+    }
+</script>

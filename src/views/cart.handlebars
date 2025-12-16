@@ -1,0 +1,125 @@
+<h1>Carrito de Compras</h1>
+
+{{#if error}}
+<div class="error">{{error}}</div>
+{{else}}
+{{#if cart.products.length}}
+<table>
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Precio</th>
+            <th>Cantidad</th>
+            <th>Subtotal</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each cart.products}}
+        <tr>
+            <td>
+                <strong>{{this.product.title}}</strong><br>
+                <small>{{this.product.description}}</small>
+            </td>
+            <td>${{this.product.price}}</td>
+            <td>
+                <input type="number" value="{{this.quantity}}" min="1"
+                    onchange="updateQuantity('{{../cartId}}', '{{this.product._id}}', this.value)"
+                    style="width: 60px; padding: 5px;">
+            </td>
+            <td>${{multiply this.product.price this.quantity}}</td>
+            <td>
+                <button onclick="removeProduct('{{../cartId}}', '{{this.product._id}}')"
+                    style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                    Eliminar
+                </button>
+            </td>
+        </tr>
+        {{/each}}
+    </tbody>
+    <tfoot>
+        <tr style="font-weight: bold; font-size: 1.2em;">
+            <td colspan="3" style="text-align: right;">Total:</td>
+            <td>${{total}}</td>
+            <td></td>
+        </tr>
+    </tfoot>
+</table>
+
+<div style="margin-top: 30px; text-align: center;">
+    <button onclick="clearCart('{{cartId}}')"
+        style="background: #dc3545; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; margin-right: 10px;">
+        Vaciar Carrito
+    </button>
+
+    <button
+        style="background: #28a745; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer;">
+        Proceder al Pago
+    </button>
+</div>
+{{else}}
+<div class="empty">El carrito está vacío</div>
+<div style="text-align: center; margin-top: 20px;">
+    <a href="/products"
+        style="background: #667eea; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; display: inline-block;">
+        Ir a productos
+    </a>
+</div>
+{{/if}}
+{{/if}}
+
+<script>
+    async function updateQuantity(cartId, productId, quantity) {
+        try {
+            const response = await fetch(`/api/carts/${cartId}/products/${productId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity: parseInt(quantity) })
+            });
+
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error al actualizar cantidad');
+            }
+        } catch (error) {
+            alert('Error al actualizar cantidad');
+        }
+    }
+
+    async function removeProduct(cartId, productId) {
+        if (!confirm('¿Eliminar este producto del carrito?')) return;
+
+        try {
+            const response = await fetch(`/api/carts/${cartId}/products/${productId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error al eliminar producto');
+            }
+        } catch (error) {
+            alert('Error al eliminar producto');
+        }
+    }
+
+    async function clearCart(cartId) {
+        if (!confirm('¿Vaciar todo el carrito?')) return;
+
+        try {
+            const response = await fetch(`/api/carts/${cartId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error al vaciar carrito');
+            }
+        } catch (error) {
+            alert('Error al vaciar carrito');
+        }
+    }
+</script>

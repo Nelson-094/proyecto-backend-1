@@ -1,0 +1,107 @@
+<h1>Productos</h1>
+
+{{#if error}}
+<div class="error">{{error}}</div>
+{{/if}}
+
+{{#if products.length}}
+<div style="margin-bottom: 20px;">
+    <label for="category-filter">Filtrar por categoría:</label>
+    <select id="category-filter" onchange="filterByCategory(this.value)">
+        <option value="">Todas</option>
+        <option value="electronics">Electronics</option>
+        <option value="clothing">Clothing</option>
+        <option value="books">Books</option>
+    </select>
+
+    <label for="sort-filter" style="margin-left: 20px;">Ordenar por precio:</label>
+    <select id="sort-filter" onchange="sortByPrice(this.value)">
+        <option value="">Sin orden</option>
+        <option value="asc">Ascendente</option>
+        <option value="desc">Descendente</option>
+    </select>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Título</th>
+            <th>Descripción</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th>Categoría</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each products}}
+        <tr>
+            <td>{{this.title}}</td>
+            <td>{{this.description}}</td>
+            <td>${{this.price}}</td>
+            <td>{{this.stock}}</td>
+            <td>{{this.category}}</td>
+            <td>
+                <button onclick="addToCart('{{this._id}}')"
+                    style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                    Agregar al carrito
+                </button>
+            </td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
+
+<!-- Paginación -->
+<div style="margin-top: 30px; text-align: center;">
+    {{#if hasPrevPage}}
+    <a href="{{prevLink}}"
+        style="background: #667eea; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; margin: 0 5px;">
+        ← Anterior
+    </a>
+    {{/if}}
+
+    <span style="margin: 0 15px; font-weight: bold;">
+        Página {{page}} de {{totalPages}}
+    </span>
+
+    {{#if hasNextPage}}
+    <a href="{{nextLink}}"
+        style="background: #667eea; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; margin: 0 5px;">
+        Siguiente →
+    </a>
+    {{/if}}
+</div>
+{{else}}
+<div class="empty">No hay productos disponibles</div>
+{{/if}}
+
+<script>
+    function filterByCategory(category) {
+        const url = new URL(window.location.href);
+        if (category) {
+            url.searchParams.set('query', `category:${category}`);
+        } else {
+            url.searchParams.delete('query');
+        }
+        url.searchParams.set('page', '1');
+        window.location.href = url.toString();
+    }
+
+    function sortByPrice(sort) {
+        const url = new URL(window.location.href);
+        if (sort) {
+            url.searchParams.set('sort', sort);
+        } else {
+            url.searchParams.delete('sort');
+        }
+        url.searchParams.set('page', '1');
+        window.location.href = url.toString();
+    }
+
+    function addToCart(productId) {
+        // Por ahora solo muestra alerta, necesitarías un cartId
+        alert('Producto agregado al carrito. ID: ' + productId);
+        // En una implementación real, harías un POST a /api/carts/:cid/products/:pid
+    }
+</script>
