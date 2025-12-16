@@ -2,16 +2,21 @@ import { Router } from 'express';
 import ProductManager from '../managers/ProductManager.js';
 
 const router = Router();
-const productManager = new ProductManager('./src/data/products.json');
+const productManager = new ProductManager();
 
-// GET / - Listar todos los productos
+// GET / - Listar productos con paginación, filtrado y ordenamiento
 router.get('/', async (req, res) => {
     try {
-        const products = await productManager.getProducts();
-        res.json({
-            status: 'success',
-            payload: products
+        const { limit, page, sort, query } = req.query;
+
+        const result = await productManager.getProducts({
+            limit,
+            page,
+            sort,
+            query
         });
+
+        res.json(result);
     } catch (error) {
         res.status(500).json({
             status: 'error',
@@ -23,13 +28,12 @@ router.get('/', async (req, res) => {
 // GET /:pid - Obtener producto por ID
 router.get('/:pid', async (req, res) => {
     try {
-        const productId = parseInt(req.params.pid);
-        const product = await productManager.getProductById(productId);
+        const product = await productManager.getProductById(req.params.pid);
 
         if (!product) {
             return res.status(404).json({
                 status: 'error',
-                message: `Producto con id ${productId} no encontrado`
+                message: `Producto con id ${req.params.pid} no encontrado`
             });
         }
 
@@ -49,6 +53,11 @@ router.get('/:pid', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const newProduct = await productManager.addProduct(req.body);
+
+        // Emitir evento de socket para actualizar en tiempo real
+        const result = await productManager.getProducts({ limit: 100 });
+        req.io.emit('updateProducts', result.payload);
+
         res.status(201).json({
             status: 'success',
             payload: newProduct
@@ -64,8 +73,7 @@ router.post('/', async (req, res) => {
 // PUT /:pid - Actualizar producto
 router.put('/:pid', async (req, res) => {
     try {
-        const productId = parseInt(req.params.pid);
-        const updatedProduct = await productManager.updateProduct(productId, req.body);
+        const updatedProduct = await productManager.updateProduct(req.params.pid, req.body);
 
         res.json({
             status: 'success',
@@ -82,8 +90,11 @@ router.put('/:pid', async (req, res) => {
 // DELETE /:pid - Eliminar producto
 router.delete('/:pid', async (req, res) => {
     try {
-        const productId = parseInt(req.params.pid);
-        const deletedProduct = await productManager.deleteProduct(productId);
+        const deletedProduct = await productManager.deleteProduct(req.params.pid);
+
+        // Emitir evento de socket para actualizar en tiempo real
+        const result = await productManager.getProducts({ limit: 100 });
+        req.io.emit('updateProducts', result.payload);
 
         res.json({
             status: 'success',
