@@ -1,6 +1,15 @@
 # API de E-commerce - Backend
 
-Proyecto de servidor Node.js con Express para gestión de productos y carritos de compra.
+Proyecto de servidor Node.js con Express, MongoDB, Handlebars y WebSockets para gestión de productos y carritos de compra.
+
+## Características
+
+- **MongoDB** como sistema de persistencia
+- **Handlebars** como motor de plantillas
+- **Socket.io** para actualizaciones en tiempo real
+- Paginación, filtrado y ordenamiento de productos
+- Gestión completa de carritos con referencias a productos
+- Vistas interactivas con navegación
 
 ## Estructura del Proyecto
 
@@ -9,18 +18,31 @@ proyecto/
 │
 ├── src/
 │   ├── app.js                    # Archivo principal del servidor
+│   ├── config/
+│   │   └── database.js           # Configuración de MongoDB
+│   ├── models/
+│   │   ├── product.model.js      # Modelo de productos
+│   │   └── cart.model.js         # Modelo de carritos
 │   ├── managers/
 │   │   ├── ProductManager.js     # Gestor de productos
 │   │   └── CartManager.js        # Gestor de carritos
 │   ├── routes/
-│   │   ├── products.router.js    # Rutas de productos
-│   │   └── carts.router.js       # Rutas de carritos
-│   └── data/
-│       ├── products.json         # Persistencia de productos
-│       └── carts.json            # Persistencia de carritos
+│   │   ├── products.router.js    # Rutas API de productos
+│   │   ├── carts.router.js       # Rutas API de carritos
+│   │   └── views.router.js       # Rutas de vistas
+│   ├── views/
+│   │   ├── layouts/
+│   │   │   └── main.handlebars   # Layout principal
+│   │   ├── products.handlebars   # Vista de productos con paginación
+│   │   ├── productDetail.handlebars
+│   │   ├── cart.handlebars       # Vista de carrito
+│   │   └── realTimeProducts.handlebars
+│   └── public/
+│       └── js/
+│           └── realTimeProducts.js
 │
+├── .env.example
 ├── package.json
-├── .gitignore
 └── README.md
 ```
 
@@ -30,6 +52,25 @@ proyecto/
 2. Instalar dependencias:
 ```bash
 npm install
+```
+
+3. Configurar MongoDB:
+   - **Opción A - MongoDB Atlas (Recomendado):**
+     1. Crear cuenta en [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+     2. Crear un cluster gratuito
+     3. Obtener la cadena de conexión
+     4. Crear archivo `.env` basado en `.env.example`
+     5. Reemplazar `MONGODB_URI` con tu cadena de conexión
+
+   - **Opción B - MongoDB Local:**
+     1. Instalar MongoDB Community Edition
+     2. Iniciar servicio de MongoDB
+     3. Usar la URI por defecto: `mongodb://localhost:27017/ecommerce`
+
+4. Crear archivo `.env`:
+```env
+MONGODB_URI=mongodb://localhost:27017/ecommerce
+PORT=8080
 ```
 
 ## Uso
@@ -46,11 +87,14 @@ npm run dev
 
 El servidor se ejecutará en `http://localhost:8080`
 
-## Endpoints
+## Endpoints API
 
 ### Productos (`/api/products`)
 
-- **GET** `/api/products/` - Listar todos los productos
+- **GET** `/api/products/` - Listar productos con paginación
+  - Query params: `limit`, `page`, `sort` (asc/desc), `query` (category:value o status:true/false)
+  - Ejemplo: `/api/products?limit=5&page=1&sort=asc&query=category:electronics`
+  
 - **GET** `/api/products/:pid` - Obtener producto por ID
 - **POST** `/api/products/` - Crear nuevo producto
 - **PUT** `/api/products/:pid` - Actualizar producto
@@ -59,64 +103,42 @@ El servidor se ejecutará en `http://localhost:8080`
 #### Ejemplo de producto:
 ```json
 {
-  "title": "Producto Ejemplo",
-  "description": "Descripción del producto",
-  "code": "PROD001",
-  "price": 1000,
+  "title": "Laptop",
+  "description": "Laptop de alta gama",
+  "code": "LAP001",
+  "price": 50000,
   "status": true,
-  "stock": 50,
-  "category": "Categoría",
-  "thumbnails": ["imagen1.jpg", "imagen2.jpg"]
+  "stock": 10,
+  "category": "electronics",
+  "thumbnails": ["laptop.jpg"]
 }
 ```
 
 ### Carritos (`/api/carts`)
 
 - **POST** `/api/carts/` - Crear nuevo carrito
-- **GET** `/api/carts/:cid` - Obtener productos de un carrito
-- **POST** `/api/carts/:cid/product/:pid` - Agregar producto al carrito
+- **GET** `/api/carts/:cid` - Obtener carrito con productos poblados
+- **POST** `/api/carts/:cid/products/:pid` - Agregar producto al carrito
+- **PUT** `/api/carts/:cid` - Actualizar todos los productos del carrito
+- **PUT** `/api/carts/:cid/products/:pid` - Actualizar cantidad de un producto
+- **DELETE** `/api/carts/:cid/products/:pid` - Eliminar producto del carrito
+- **DELETE** `/api/carts/:cid` - Vaciar carrito
 
-## Pruebas con Postman
+## Vistas
 
-### Crear un producto
-```
-POST http://localhost:8080/api/products/
-Content-Type: application/json
-
-{
-  "title": "Laptop",
-  "description": "Laptop de alta gama",
-  "code": "LAP001",
-  "price": 50000,
-  "stock": 10,
-  "category": "Electrónica",
-  "thumbnails": ["laptop.jpg"]
-}
-```
-
-### Crear un carrito
-```
-POST http://localhost:8080/api/carts/
-```
-
-### Agregar producto al carrito
-```
-POST http://localhost:8080/api/carts/1/product/1
-```
-
-## Características
-
-- IDs autogenerados y únicos
-- Validación de campos obligatorios
-- Persistencia en archivos JSON
-- Manejo de errores
-- Incremento automático de cantidad si el producto ya existe en el carrito
+- `/products` - Lista de productos con paginación y filtros
+- `/products/:pid` - Detalle de producto
+- `/carts/:cid` - Vista de carrito específico
+- `/realtimeproducts` - Productos en tiempo real con WebSockets
 
 ## Tecnologías
 
 - Node.js
 - Express
-- FileSystem (persistencia)
+- MongoDB + Mongoose
+- Handlebars
+- Socket.io
+- dotenv
 
 ## Autor
 
